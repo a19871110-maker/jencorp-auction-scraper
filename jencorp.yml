@@ -1,0 +1,39 @@
+name: jencorp-scraper
+
+on:
+  schedule:
+    - cron: "56 8 * * *"   # JST 17:56
+    - cron: "59 8 * * *"   # JST 17:59
+    - cron: "1 9 * * *"    # JST 18:01
+    - cron: "5 9 * * *"    # JST 18:05
+    - cron: "8 9 * * *"    # JST 18:08
+    - cron: "10 9 * * *"   # JST 18:10
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-scraper:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run scraper (PowerShell)
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File .\Scrape-Jencorp.ps1
+
+      - name: Commit & Push CSV changes
+        shell: pwsh
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/*.csv data/snapshots/*.csv 2>$null
+          if (git diff --cached --quiet) {
+            echo "No CSV changes to commit."
+          } else {
+            $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss 'JST'"
+            git commit -m "auto: update jencorp CSVs $ts"
+            git push
+          }
